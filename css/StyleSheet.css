@@ -1,0 +1,72 @@
+﻿
+.popupw
+   {   
+       position:absolute;
+       margin:0 auto;
+       top:10%;
+       left:20%;
+       right:20%;
+       background:#f4f4f4;
+       z-index:3001;
+       width:30%;
+       height:auto;
+       border-radius:10px;
+    -webkit-border-radius:10px;
+    -moz-border-radius:10px;
+    border:solid #cccccc 1px;
+    -webkit-box-shadow: 5px 6px 2px 2px rgba(0,0,0,0.71);
+    -moz-box-shadow: 5px 6px 2px 2px rgba(0,0,0,0.71);
+    box-shadow: 5px 6px 2px 2px rgba(0,0,0,0.71);
+   }
+.mask {
+    position: fixed;
+    left: 0px;
+    top: 0px;
+    z-index: 3000;
+    opacity: 0.4;
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=40)"; /* first!*/
+    filter: alpha(opacity=40); /* second!*/
+    background-color: #0d2f26;    
+    width: 100%;
+    height: 100%;
+}
+
+.pnlPopUpEntrada
+{
+    position:absolute;
+    margin:0 auto;
+    top:1%;
+    left:20%;
+    right:20%;
+    background:#f4f4f4;
+    z-index:3001;
+    width:60%;
+    max-height:95%;
+    border-radius:10px;
+    -webkit-border-radius:10px;
+    -moz-border-radius:10px;
+    border:solid #cccccc 1px;
+    -webkit-box-shadow: 5px 6px 2px 2px rgba(0,0,0,0.71);
+    -moz-box-shadow: 5px 6px 2px 2px rgba(0,0,0,0.71);
+    box-shadow: 5px 6px 2px 2px rgba(0,0,0,0.71);
+}
+
+.popupventa
+{
+    position:absolute;    
+    top:1%;
+    left:20%;
+    right:20%;
+    background:#f4f4f4;
+    z-index:3001;
+    width:60%;
+    max-height:95%;
+    border-radius:10px;
+    -webkit-border-radius:10px;
+    -moz-border-radius:10px;
+    border:solid #cccccc 1px;
+    -webkit-box-shadow: 5px 6px 2px 2px rgba(0,0,0,0.71);
+    -moz-box-shadow: 5px 6px 2px 2px rgba(0,0,0,0.71);
+    box-shadow: 5px 6px 2px 2px rgba(0,0,0,0.71);   
+    }
+    

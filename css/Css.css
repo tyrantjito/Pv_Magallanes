@@ -1,0 +1,134 @@
+﻿.PopupFondo
+{
+    background-color:#f4f4f4;
+}
+
+.z3{z-index:3000;
+    overflow: auto;
+    position:relative;
+    text-decoration:none;
+}
+
+.colorBlanco{color:#fff;}
+.negritas{font-weight:bold;}
+
+.pies
+{
+    bottom:0;
+    left:0;
+    min-width:100%;
+    position:fixed;
+    background:#808080;
+    color:#fff;
+    font-weight:bold;
+    height:auto;    
+    padding:1em;
+    z-index:2;
+}
+
+.encabezados
+{
+    top:0;
+    left:0;
+    min-width:100%;
+    position:fixed;
+    background: #24BAE5;
+    z-index:2;
+    height:auto;    
+    padding:1em;
+    }
+
+.ancho95{width:95%;}
+.centrado{margin:0 auto;}
+.alto30px{height:30px;}
+.water{color:#d5d5d5;}
+.errores{color:Red; font-size:10pt; font-style:normal;}
+.bordes{border:solid 1px #000;}
+
+.marTop{margin-top:1em;}
+.marBot{margin-bottom:1em;}
+
+.ancho100px{width:100px;}
+.ancho120px{width:120px;}
+.ancho80px{width:80px;}
+.altotext{height:100px;}
+.ancho150px{width:150px;}
+.ancho250px{width:250px;}
+.ancho5px{width:5px;}
+.ancho50px{width:50px;}
+.textBox100{width:100px; height:30px;}
+.textBox250{width:250px; height:30px;}
+.textBox200{width:200px; height:30px;}
+.textBox150{width:150px; height:30px;}
+.textBox300{width:300px; height:30px;}
+.textBox120{width:120px; height:30px;}
+.textBox80{width:80px; height:30px;}
+.textBoxTextArea{max-width:100px; max-height:100px;}
+.pad1em{padding:1em;}
+
+.MyCalendar tr td{
+margin: 0;padding: 0;border: 0;outline: 0;font-size: 100%;vertical-align: baseline; background-color: transparent; }
+
+/*Luego tomo la información del control y la modifico */
+
+/* contenedor */
+.MyCalendar .ajax__calendar_container {
+border: 1px solid #646464; background-color: White; color: #000; width: 200px;}
+/* cuerpo */
+.MyCalendar .ajax__calendar_body
+{ width: 170px; font-size : 1em; color: black; background:#fff; margin:0 auto; padding:0; top:0; left:0; padding:1em; }
+/* formato de la información mostrada */
+.MyCalendar .ajax__calendar_header,
+.MyCalendar .ajax__calendar_title,
+.MyCalendar .ajax__calendar_dayname,
+.MyCalendar .ajax__calendar_day,
+{ font-size : 1em; color: black;}
+/* cuando colocamos el mouse en algún campo */
+.MyCalendar .ajax__calendar_hover .ajax__calendar_day,
+.MyCalendar .ajax__calendar_hover .ajax__calendar_month,
+.MyCalendar .ajax__calendar_hover .ajax__calendar_year
+{ font-size : 1em; color: #fff; background-color:#808080}
+
+.padding8px{padding:8px;}
+.fondoPopup
+{
+    width:100%;
+    height:100%;
+    opacity: 0.4;
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=40)"; /* first!*/
+    filter: alpha(opacity=40); /* second!*/
+    background-color:#0d2f26;
+}
+.medio{vertical-align:middle;}
+
+.link{text-decoration:none; background-color:transparent;}
+.link:hover{text-decoration:none; background-color:transparent; color:#ffffff;}
+
+.maxAlto500px{height:auto;
+              max-height:500px;}
+.maxAlto300px{height:auto;
+              max-height:300px;}
+
+.maskLoad {
+    position: fixed;
+    left: 0px;
+    top: 0px;
+    z-index: 2000;    
+    background-color: #15191F;    
+    width: 100%;
+    height: 100%;
+}
+
+.pnlPopUpLoad
+{
+    position:absolute;
+    text-align:center;
+    margin:0 auto;
+    top:0%;    
+    left:20%;
+    right:20%;
+    background:transparent;
+    z-index:3001;
+    width:60%;
+    max-height:60%;    
+}

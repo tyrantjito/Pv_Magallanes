@@ -1,0 +1,191 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeFile="Administracion.master.cs" Inherits="Administracion" %>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title>Administracion</title>
+    <meta charset="utf-8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="shortcut icon" type="image/x-icon" href="img/favicon.ico" />
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/bootstrap-responsive.min.css" rel="stylesheet" />
+    <link href="http://fonts.googleapis.com/css?family=Open+Sans:400italic,600italic,400,600" rel="stylesheet" />
+    <link href="css/font-awesome.css" rel="stylesheet" />
+    <link href="css/style.css" rel="stylesheet" />
+    <link href="css/Css.css" rel="stylesheet" />
+    <link href="css/pages/dashboard.css" rel="stylesheet" />
+    <link rel="stylesheet" type="text/css" href="css/cloud-admin.css" />
+    <link rel="stylesheet" type="text/css" href="css/StyleSheet.css" />
+    <asp:ContentPlaceHolder ID="head" runat="server">
+    </asp:ContentPlaceHolder>
+
+    <script src="js/jquery-1.7.2.min.js" type="text/javascript"></script>
+    <script src="js/excanvas.min.js" type="text/javascript"></script>
+    <script src="js/chart.min.js" type="text/javascript"></script>
+    <script src="js/bootstrap.js" type="text/javascript"></script>
+    <script language="javascript" type="text/javascript" src="js/full-calendar/fullcalendar.min.js"></script>
+
+    <script src="js/base.js" type="text/javascript"></script>
+
+</head>
+<body>
+    <form id="form1" runat="server">
+
+        <div class="encabezados">
+            <table class="col-lg-12 col-sm-12">
+                <tr>
+                    <td class="col-lg-3 col-sm-4 col-xs-4 text-left colorBlanco negritas font-20">
+                        <img src="img/icono.png" alt="E-PuntoVenta" class="icono" />
+                        | Administraci&oacute;n
+                    </td>
+                    <td class="col-lg-1 col-sm-1 text-left colorBlanco negritas font-20">
+                        <asp:Label ID="lblFechaActual" runat="server" Visible="false"></asp:Label>
+                        <asp:LinkButton runat="server" ID="not" CssClass="colorBlanco font-20 negritas link" data-toggle="dropdown" href="#" aria-expanded="true">
+                            <span class="badge pull-right">
+                                <asp:Label ID="lblNotifi" runat="server"></asp:Label></span>
+                            <i class="icon-bell"></i><i class="icon-caret-down"></i>
+                        </asp:LinkButton>
+                        <ul class="dropdown-menu dropdown-alerts font-11">
+                            <asp:DataList ID="DataList2" runat="server" DataSourceID="SqlDataSource1" CssClass="ancho250px">
+                                <ItemTemplate>
+                                    <li>
+                                        <asp:LinkButton ID="lnkNotificacion" runat="server" CommandArgument='<%# Eval("id_notificacion") %>' OnClick="lnkNotificacion_Click">
+                                            <i class='<%# Eval("clase") %>'></i>
+                                            <asp:Label ID="lblNotifi" runat="server" Text='<%# Eval("notificacion") %>'></asp:Label>
+                                        </asp:LinkButton>
+                                    </li>
+                                    <li class="divider"></li>
+                                </ItemTemplate>
+                            </asp:DataList>
+                            <asp:SqlDataSource ID="SqlDataSource1" runat="server" ConnectionString="<%$ ConnectionStrings:PVW %>" SelectCommand="select top 15 n.id_notificacion,convert(char(10),n.hora,108) as hora,n.notificacion,n.clasificacion,case n.clasificacion when 1 then 'icon-usd' when 2 then 'icon-file' when 3 then 'icon-graph' when 4 then 'icon-signin' else '' end clase,n.usuario,(u.nombre+' '+u.apellido_pat+' '+isnull(u.apellido_mat,'')) as nombreUsuario,n.estatus from notificaciones_PV n left join usuarios_PV u on u.usuario=n.usuario where n.fecha=@fecha and n.estatus='P' order by hora desc">
+                                <SelectParameters>
+                                    <asp:ControlParameter ControlID="lblFechaActual" Name="fecha" PropertyName="Text" />
+                                </SelectParameters>
+                            </asp:SqlDataSource>
+                            <li>
+                                <asp:LinkButton ID="lnkTodas" runat="server" CssClass="text-center" OnClick="lnkTodas_Click">Mostrar todas las notificaciones<i class="fa fa-angle-right"></i></asp:LinkButton>
+                            </li>
+                        </ul>
+                    </td>
+                    <td class="col-lg-8 col-sm-8 text-right colorBlanco negritas font-20">
+                        <i class="icon-user medio"></i>&nbsp;&nbsp;&nbsp;<asp:Label ID="lblUsuarioLog" runat="server" CssClass="medio"></asp:Label>
+                        <asp:LinkButton ID="lnkSalir" runat="server" ToolTip="Salir" OnClick="lnkSalir_Click" CssClass="medio colorBlanco"><i class="icon-signout font-20"></i></asp:LinkButton>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="subnavbar">
+            <div class="subnavbar-inner">
+                <div class="container">
+                    <ul class="mainnav">
+                        <li class="dropdown">
+                            <asp:LinkButton runat="server" ID="lnkAdmon" href="javascript:;" class="dropdown-toggle" data-toggle="dropdown"><i class="icon-cog"></i><span>Administraci&oacute;n</span> <b class="caret"></b></asp:LinkButton>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkcatUsu" OnClick="lnkcatUsu_Click">Usuarios</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton ID="lnkUsuPer" runat="server" OnClick="lnkUsuPer_Click">Usuarios Permisos</asp:LinkButton></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown">
+                            <asp:LinkButton runat="server" ID="lnkCatalogos" href="javascript:;" class="dropdown-toggle" data-toggle="dropdown"><i class="icon-book"></i><span>Cat&aacute;logos</span> <b class="caret"></b></asp:LinkButton>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkEmpresas" OnClick="lnkEmpresas_Click">Empresa</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkUnidades" OnClick="lnkUnidades_Click">Unidades</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkCategorias" OnClick="lnkCategorias_Click">Categorias</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkFamilias" OnClick="lnkFamilias_Click">Familias</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkLineas" OnClick="lnkLineas_Click">L&iacute;neas</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkIslas" OnClick="lnkIslas_Click">Tiendas</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkUsuIsla" OnClick="lnkUsuIsla_Click">Usuario Tiendas</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkUsuFact" OnClick="lnkUsuFact_Click">Usuario Facturaci&oacute;n Tiendas</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkProvee" OnClick="lnkProvee_Click">Proveedores</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkProductos" OnClick="lnkProductos_Click">Productos</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkPlantilla" OnClick="lnkPlantilla_Click">Plantilla Ticket</asp:LinkButton></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <asp:LinkButton runat="server" ID="lnkEntradas" OnClick="lnkEntradas_Click"><i class="icon-signin"></i><span>Entrada</span></asp:LinkButton></li>
+                        <li>
+                            <asp:LinkButton runat="server" ID="lnkConsulInv" OnClick="lnkConsulInv_Click"><i class="icon-list"></i><span>Consulta de Inventario</span></asp:LinkButton></li>
+                        <li>
+                            <asp:LinkButton runat="server" ID="lnkAjusteInventario" onclick="lnkAjusteInventario_Click"><i class="icon-wrench"></i><i class="icon-list"></i><span>Ajuste de Inventario</span></asp:LinkButton></li> 
+                        <li>
+                            <asp:LinkButton runat="server" ID="lnkConsultaAjuste" onclick="lnkConsultaAjuste_Click"><i class="icon-search"></i><i class="icon-list"></i><span>Consulta Ajuste de Inventario</span></asp:LinkButton></li> 
+                        <li class="dropdown">
+                            <asp:LinkButton runat="server" ID="lnkConsultas" href="javascript:;" class="dropdown-toggle" data-toggle="dropdown"><i class="icon-search"></i><span>Consultas</span> <b class="caret"></b></asp:LinkButton>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkConsulOrden" OnClick="lnkConsulOrden_Click">Ordenes Compra</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkConsulVenta" OnClick="lnkConsulVenta_Click">Ventas</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkConsulVentaUser" OnClick="lnkConsulVentaUser_Click">Ventas Usuarios</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkConsulGastos" OnClick="lnkConsulGastos_Click">Gastos</asp:LinkButton></li>                                
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkConsulCancel" OnClick="lnkConsulCancel_Click">Cancelaciones</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkConsulPendientes" OnClick="lnkConsulPendientes_Click">Pendientes por Facturar</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkNotificaciones" OnClick="lnkNotificaciones_Click">Notificaciones</asp:LinkButton></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown">
+                            <asp:LinkButton runat="server" ID="lnkReportes" href="javascript:;" class="dropdown-toggle" data-toggle="dropdown"><i class="icon-print"></i><span>Reportes</span> <b class="caret"></b></asp:LinkButton>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkEnvio" OnClick="lnkEnvio_Click">Envio a Tienda</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkAcumulado" OnClick="lnkAcumulado_Click">Acumulado Mensual</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkCortes" OnClick="lnkCortes_Click">Cortes Díarios</asp:LinkButton></li>
+                                <li>
+                                    <asp:LinkButton runat="server" ID="lnkPersonal" OnClick="lnkPersonal_Click">Personal</asp:LinkButton></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <asp:LinkButton runat="server" ID="lnkVenta" OnClick="lnkVenta_Click"><i class="icon-shopping-cart"></i><span>Venta</span></asp:LinkButton></li>
+                    </ul>
+                    <!-- /subnavbar -->
+
+                </div>
+                <!-- /container -->
+            </div>
+            <!-- /subnavbar-inner -->
+        </div>
+
+        <div>
+            <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server"></asp:ContentPlaceHolder>
+        </div>
+
+        <div class="pies">
+            <table class="col-lg-12 col-sm-12">
+                <tr>
+                    <td class="col-lg-4 col-sm-4 text-left">
+                        <i class="icon-shopping-cart"></i>&nbsp;&nbsp;&nbsp;<asp:Label ID="lblCaja" runat="server"></asp:Label>
+                    </td>
+                    <td class="col-lg-4 col-sm-4 text-center"><asp:Label ID="lblVersionSis" runat="server" ></asp:Label></td>
+                    <td class="col-lg-4 col-sm-4 text-right">
+                        <i class="icon-calendar"></i>&nbsp;&nbsp;&nbsp;<asp:Label ID="lblFecha" runat="server"></asp:Label>
+                    </td>
+                </tr>
+            </table>
+
+        </div>
+
+    </form>
+</body>
+</html>

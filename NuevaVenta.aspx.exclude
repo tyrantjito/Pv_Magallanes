@@ -1,0 +1,349 @@
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeFile="NuevaVenta.aspx.cs" Inherits="NuevaVenta" MasterPageFile="~/PuntoVenta.master"  %>
+
+<%@ Register assembly="AjaxControlToolkit" namespace="AjaxControlToolkit" tagprefix="cc1" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" Runat="Server">
+
+
+
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" Runat="Server">
+
+<script type="text/javascript">
+    function validaLong(txtBox) {
+        var largo;
+        largo = document.getElementById('<%= txtProd.ClientID %>').value.Length;
+        if (largo < 15) {
+            alert("El código indicado no existe verifique o busque el codigo requerido.");
+        } else {
+            document.getElementById('<%= btnValidar.ClientID %>').click();
+        }
+    }
+
+    function handleKeyPress(e) {
+        var key = e.keyCode || e.which;
+        if (key == 13) {
+            document.getElementById('<%= btnValidar.ClientID %>').click();
+
+        }
+
+    }
+</script>
+    <asp:ScriptManager ID="ScriptManager1" runat="server"></asp:ScriptManager>
+    <asp:Panel ID="pnlVenta" runat="server" CssClass="venta">
+        <asp:UpdatePanel ID="UpdatePanel1" runat="server">
+            <ContentTemplate>
+                <div class="row">
+                    <div class="alert-success col-lg-12 col-sm-12 center negritas font-14 pad1em">
+                       <i class="icon-shopping-cart"></i> <asp:Label runat="server" ID="lblTitulo" Text="Venta" CssClass="alert-success"></asp:Label>
+                    </div>
+                </div>
+                <div class="row marTop">
+                    <div class="col-sm-4">
+                        <asp:Label ID="Label2" runat="server" Text="Forma de Pago:" CssClass="alineados middle"></asp:Label>
+                        <asp:DropDownList ID="ddlFormaPago" runat="server" CssClass="alineados middle" onselectedindexchanged="ddlFormaPago_SelectedIndexChanged" AutoPostBack="true">                        
+                            <asp:ListItem Selected="True" Value="E">Efectivo</asp:ListItem>
+                            <asp:ListItem Value="D">Tarjeta Débito</asp:ListItem>
+                            <asp:ListItem Value="A">Tarjeta de Crédito</asp:ListItem>                        
+                        </asp:DropDownList>
+                    </div>
+                    <div class="col-sm-4">
+                        <asp:Label ID="Label3" runat="server" Text="Tarjeta:" CssClass="alineados middle"></asp:Label>
+                        <asp:DropDownList ID="ddlTarjeta" runat="server" CssClass="alineados middle">
+                        <asp:ListItem Selected="True" Value="">Seleccione Tipo de Tarjeta</asp:ListItem>
+                            <asp:ListItem Value="VI">VISA</asp:ListItem>
+                            <asp:ListItem Value="MC">MASTERCARD</asp:ListItem>
+                            <asp:ListItem Value="AE">AMERICAN EXPRESS</asp:ListItem>  
+                        </asp:DropDownList>
+                        <asp:RequiredFieldValidator ID="RequiredFieldValidator5" runat="server" ErrorMessage="Debe indicar el tipo de tarjeta" ControlToValidate="ddlTarjeta" CssClass="validaciones alineados" ValidationGroup="agregar" Text="*"></asp:RequiredFieldValidator>
+                        <asp:TextBox ID="txtReferencia" runat="server" MaxLength="4" CssClass="input-mini alineados middle" placeholder="Dígitos"></asp:TextBox>
+                        <cc1:FilteredTextBoxExtender ID="txtReferencia_FilteredTextBoxExtender" runat="server" BehaviorID="txtReferencia_FilteredTextBoxExtender" TargetControlID="txtReferencia" FilterType="Numbers" />
+                        <asp:RequiredFieldValidator ID="RequiredFieldValidator1" runat="server" ErrorMessage="Debe indicar los últimos 4 dígitos de la tarjeta" ControlToValidate="txtReferencia" CssClass="validaciones alineados" ValidationGroup="agregar" Text="*"></asp:RequiredFieldValidator>
+                    </div>
+                    <div class="col-sm-4">
+                        <asp:Label ID="Label4" runat="server" Text="Banco:" CssClass="alineados middle"></asp:Label>
+                        <asp:DropDownList ID="ddlBanco" runat="server" DataSourceID="SqlDataSource1" DataTextField="nombrebanco" DataValueField="clvbanco" AppendDataBoundItems="true" CssClass="alineados middle">
+                            <asp:ListItem Selected="True" Text="Seleccione Banco" Value=""></asp:ListItem>
+                        </asp:DropDownList>
+                        <asp:RequiredFieldValidator ID="RequiredFieldValidator2" runat="server" ErrorMessage="Debe indicar el banco" ControlToValidate="ddlBanco" CssClass="validaciones alineados" ValidationGroup="agregar" Text="*"></asp:RequiredFieldValidator>
+                        <asp:SqlDataSource ID="SqlDataSource1" runat="server" ConnectionString="<%$ ConnectionStrings:PVW %>" SelectCommand="select clvbanco, nombrebanco from catbancos"></asp:SqlDataSource>
+                    </div>
+                </div>
+            </ContentTemplate>
+        </asp:UpdatePanel>
+        <br />
+         <asp:UpdatePanel ID="UpdatePanel2" runat="server">
+                <ContentTemplate>        
+        <div class="row">
+            <div class="col-sm-10"> 
+                    <asp:Label ID="Label5" runat="server" Text="Producto:" CssClass="alineados middle"></asp:Label>
+                
+                <asp:TextBox ID="txtProd" runat="server" MaxLength="15" CssClass="input-large alineados middle"></asp:TextBox>                
+                <asp:Button ID="btnValidar" runat="server" onclick="btnValidar_Click" />
+
+
+
+                    <telerik:RadSkinManager ID="RadSkinManager1" runat="server"/>
+                    <telerik:RadAutoCompleteBox Runat="server" RenderMode="Lightweight" ID="RadAutoCompleteBox" EmptyMessage="Producto" MaxResultCount="5" OnTextChanged="RadAutoCompleteBox1_TextChanged"
+                         DataSourceID="SqlDataSource100" DataTextField="descripcion" EnableAriaSupport="true" AccessKey="W" InputType="Text" Width="200px" DropDownWidth="200px" DropDownHeight="200px">
+                    </telerik:RadAutoCompleteBox>
+                    <asp:SqlDataSource runat="server" ID="SqlDataSource100" ConnectionString="<%$ ConnectionStrings:PVW %>" ProviderName="System.Data.SqlClient" SelectCommand="select aa.idarticulo+' / '+c.descripcion as descripcion from articulosalmacen aa inner join catproductos c on c.idproducto=aa.idarticulo where aa.idalmacen=@almacen">
+                        <SelectParameters>
+                            <asp:QueryStringParameter Name="almacen" QueryStringField="p" DbType="Int32" DefaultValue="0" />
+                        </SelectParameters>
+                    </asp:SqlDataSource>
+                    <asp:Label ID="lblProducto" runat="server" CssClass="alineados middle margenLeft" Visible="false"></asp:Label>
+                    <asp:Image ID="imgProducto" runat="server" GenerateEmptyAlternateText="True" Width="60" Height="60" Visible="false" />
+                    <asp:TextBox ID="lblCostoVenta" runat="server" MaxLength="5" CssClass="input-small alineados middle" placeholder="Precio" AutoPostBack="true" ontextchanged="lblCostoVenta_TextChanged"></asp:TextBox>
+                    <asp:Label ID="Label6" runat="server" Text="Cantidad:" CssClass="alineados middle margenLeft"></asp:Label>
+                    <asp:TextBox ID="txtCantidad" runat="server" MaxLength="12" CssClass="input-small alineados middle" placeholder="Cantidad" AutoPostBack="true" ontextchanged="txtCantidad_TextChanged"></asp:TextBox>
+                    <asp:RequiredFieldValidator ID="RequiredFieldValidator4" runat="server" ErrorMessage="Debe indicar una cantidad" ControlToValidate="txtCantidad" CssClass="validaciones alineados" ValidationGroup="agregar" Text="*"></asp:RequiredFieldValidator>                            
+                    <cc1:FilteredTextBoxExtender ID="txtCantidad_FilteredTextBoxExtender" runat="server" BehaviorID="txtCantidad_FilteredTextBoxExtender" TargetControlID="txtCantidad" FilterType="Numbers,Custom" ValidChars="." />
+                    <asp:RegularExpressionValidator ControlToValidate="txtCantidad" CssClass="errores" Text="*" ID="RegularExpressionValidator3" runat="server" ValidationGroup="agregar" ErrorMessage="La Cantidad es incorrecta" ValidationExpression="^(\$|)([0-9]\d{0,2}(\,\d{3})*|([0-9]\d*))(\.\d{3})?$" />
+                    <asp:TextBox ID="txtVentaAgranel" runat="server" MaxLength="5" CssClass="input-small alineados middle" placeholder="Monto" AutoPostBack="true" ontextchanged="txtVentaAgranel_TextChanged" Visible="false"></asp:TextBox>
+                    <cc1:FilteredTextBoxExtender ID="FilteredTextBoxExtender1" runat="server" BehaviorID="txtVentaAgranel_FilteredTextBoxExtender" TargetControlID="txtVentaAgranel" FilterType="Numbers,Custom" ValidChars="." />
+                    <asp:Label ID="lblTotalProducto" runat="server" CssClass="alineados middle margenLeft"></asp:Label>&nbsp;&nbsp;&nbsp;&nbsp;
+                    <asp:Button ID="btnAgregar" runat="server" Text="Agregar" CssClass="btn btn-info alineados margenLeft" ToolTip="Agregar Producto" onclick="btnAgregar_Click" CausesValidation="true" ValidationGroup="agregar" />
+            </div>                    
+        </div>           
+        <br />
+        <div class="row">
+            <div class="col-lg-12 col-sm-12 center alert-danger">
+                <asp:Label ID="lblError" runat="server" CssClass="validaciones"></asp:Label>
+                <asp:ValidationSummary ID="ValidationSummary1" runat="server" CssClass="validaciones" DisplayMode="List" ValidationGroup="agregar" />
+                <asp:ValidationSummary ID="ValidationSummary2" runat="server" CssClass="validaciones" DisplayMode="List" ValidationGroup="editar"/>
+            </div>
+        </div> 
+        </ContentTemplate>
+                </asp:UpdatePanel>         
+        <div class="row">
+            <div class="col-lg-12 col-sm-12 center">
+                <div class="table-responsive">
+                    <asp:UpdatePanel ID="UpdatePanel3" runat="server" ChildrenAsTriggers="false" UpdateMode="Conditional">
+                        <ContentTemplate>
+                            <asp:GridView ID="grvVenta" runat="server" CssClass="table table-bordered center" 
+                                AutoGenerateColumns="False" EmptyDataText="No existen Articulos" PageSize="5"
+                                AllowPaging="True" DataKeyNames="renglon"
+                                onpageindexchanging="grvVenta_PageIndexChanging" 
+                                onrowcancelingedit="grvVenta_RowCancelingEdit" 
+                                onrowediting="grvVenta_RowEditing" onrowupdating="grvVenta_RowUpdating" 
+                                onrowdeleting="grvVenta_RowDeleting" >
+                                <Columns>
+                                    <asp:TemplateField HeaderText="No." Visible="false">
+                                        <EditItemTemplate>
+                                            <asp:Label ID="lblIdArticulo" runat="server" Text='<%# Eval("renglon") %>'></asp:Label>
+                                        </EditItemTemplate>
+                                        <ItemTemplate>
+                                            <asp:Label ID="Label10" runat="server" Text='<%# Bind("renglon") %>'></asp:Label>
+                                        </ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="clave" HeaderText="Clave" ReadOnly="true" />
+                                    <asp:BoundField DataField="producto" HeaderText="Producto" ReadOnly="true" />
+                                    <asp:TemplateField HeaderText="Cantidad">
+                                        <EditItemTemplate>
+                                            <asp:TextBox ID="txtModCantidad" runat="server" Text='<%# Bind("cantidad") %>' MaxLength="5" 
+                                                CssClass="input-small alineados middle" placeholder="Cantidad" 
+                                                ontextchanged="txtModCantidad_TextChanged"></asp:TextBox>
+                                            <cc1:FilteredTextBoxExtender ID="txtModCantidad_FilteredTextBoxExtender" runat="server" BehaviorID="txtModCantidad_FilteredTextBoxExtender" TargetControlID="txtModCantidad" FilterType="Numbers" />
+                                            <asp:RequiredFieldValidator ID="RequiredFieldValidator5" runat="server" ErrorMessage="Debe indicar una cantidad" ControlToValidate="txtModCantidad" CssClass="validaciones alineados" ValidationGroup="editar" Text="*"></asp:RequiredFieldValidator>                            
+                                        </EditItemTemplate>
+                                        <ItemTemplate>
+                                            <asp:Label ID="Label7" runat="server" Text='<%# Bind("cantidad") %>'></asp:Label>
+                                        </ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:TemplateField HeaderText="Precio">
+                                        <EditItemTemplate>
+                                            <asp:Label ID="lblPrecioMod" runat="server" Text='<%# Eval("precio") %>'></asp:Label>
+                                        </EditItemTemplate>
+                                        <ItemTemplate>
+                                            <asp:Label ID="Label9" runat="server" Text='<%# Bind("precio") %>'></asp:Label>
+                                        </ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:TemplateField HeaderText="Importe">
+                                        <EditItemTemplate>
+                                            <asp:Label ID="lblTotalMod" runat="server" Text='<%# Eval("total") %>'></asp:Label>
+                                        </EditItemTemplate>
+                                        <ItemTemplate>
+                                            <asp:Label ID="Label8" runat="server" Text='<%# Bind("total") %>'></asp:Label>
+                                        </ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:CommandField ShowEditButton="True" ButtonType="Button" ValidationGroup="editar" Visible="false" >
+                                    <ControlStyle CssClass="btn btn-warning alineados" />
+                                    </asp:CommandField>
+                                    <asp:CommandField ShowDeleteButton="True" ButtonType="Button" DeleteText="Eliminar">
+                                    <ControlStyle CssClass="btn btn-danger alineados" />
+                                    </asp:CommandField>
+                                </Columns>
+                            </asp:GridView>  
+                        </ContentTemplate>
+                    </asp:UpdatePanel>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-6 col-sm-6 middle">
+                <div class="form-group">
+                    <asp:Label ID="Label11" runat="server" Text="Notas:"></asp:Label>
+                    <asp:TextBox ID="txtNotas" runat="server" MaxLength="1024" Rows="5" TextMode="MultiLine" CssClass="form-control textNota" ></asp:TextBox>
+                </div>
+            </div>
+            <asp:UpdatePanel ID="UpdatePanel5" runat="server">
+                <ContentTemplate> 
+                    <div class="col-lg-3 col-sm-6 middle">
+                        <table>
+                            <tr class="h4">
+                                <td class="col-lg-2 col-sm-2 text-left"><asp:Label ID="Label12" runat="server" Text="Subtotal:"></asp:Label></td>
+                                <td class="col-lg-1 col-sm-1 text-right"><asp:Label ID="lblSubtotal" runat="server"></asp:Label></td>
+                            </tr>
+                            <tr class="h4">
+                                <td class="col-lg-2 col-sm-2 text-left"><asp:Label ID="Label14" runat="server" Text="I.V.A. (16%):" Visible="false"></asp:Label></td>
+                                <td class="col-lg-1 col-sm-1 text-right"><asp:Label ID="lblIva" runat="server" Visible="false"></asp:Label></td>
+                            </tr>
+                            <tr class="h4">
+                                <td class="col-lg-2 col-sm-2 text-left"><br /><asp:Label ID="Label13" runat="server" Text="Total:"></asp:Label>   </td>
+                                <td class="col-lg-1 col-sm-1 text-right"><br /> <asp:Label ID="lblTotal" runat="server" CssClass="text-right"></asp:Label></td>
+                            </tr>
+                            <tr>
+                                <td class="col-lg-2 col-sm-3 text-center"><asp:Button ID="btnAceptarVenta" runat="server" Text="Aceptar" CssClass="btn btn-icon btn-success alineados" onclick="btnAceptarVenta_Click" /></td>
+                                <td class="col-lg-1 col-sm-3 text-center"><asp:Button ID="btnCancelarVenta" runat="server" Text="Cancelar" CssClass="btn btn-icon btn-danger alineados" onclick="btnCancelarVenta_Click" /></td>
+                            </tr>
+                        </table>                                              
+                    </div>
+                </ContentTemplate>
+            </asp:UpdatePanel>
+        </div>
+    </asp:Panel>
+    <asp:UpdatePanel ID="UpdatePanel4" runat="server">
+                <ContentTemplate>                    
+                    <asp:Panel ID="PanelMask" runat="server" Visible="false" CssClass="mask"></asp:Panel>
+                    <asp:Panel ID="pnlTicket" runat="server" Visible="false" CssClass="popupw pading8px">
+                        <asp:Panel ID="Panel1" runat="server" CssClass="text-center" >
+                            <div class="col-lg-12 col-sm-12 text-center ticket">
+                                <asp:Label ID="Label15" runat="server" Text="Ticket:"></asp:Label> 
+                                <asp:Label ID="lblTicket" runat="server" CssClass="text-info" ></asp:Label>
+                            </div>
+                            <div class="col-lg-12 col-sm-12 text-center">
+                                <asp:CheckBox ID="chkFacturacionPend" Checked="false" runat="server" Text="Facturar" AutoPostBack="true" OnCheckedChanged="chkFacturacionPend_CheckedChanged" />
+                            </div>
+                            <div class="col-lg-12 col-sm-12 text-center">
+                                <asp:Label ID="Label34" runat="server" Text="R.F.C: " Visible="false" />
+                                <asp:TextBox ID="txtRFCVerifica" runat="server" Visible="false" placeholder="R.F.C." MaxLength="13" CssClass="input-medium" />
+                                <asp:Label ID="lblRazon" runat="server" CssClass="text-info negritas"></asp:Label>
+                                <asp:Button ID="btnRevisaRFC" runat="server" Visible="false" Text="Buscar" OnClick="btnRevisaRFC_Click" />
+                            </div>
+                            <div class="col-lg-12 col-sm-12 text-center alert-danger">
+                                <asp:Label ID="lblErrorFacCliente" runat="server" CssClass="errores" /><br />
+                                <asp:ValidationSummary ID="ValidationSummary3" runat="server" DisplayMode="List" CssClass="errores" ValidationGroup="alta" />
+                            </div>                                                        
+                            <br /><br />
+                            <asp:Panel ID="pnlCliente" runat="server" CssClass="col-lg-12 col-sm-12 centrado text-center" Visible="false">
+                                <div class="col-lg-6 col-sm-6">
+                                    <div class="col-lg-3 col-sm-2 text-left"><asp:Label ID="Label16" runat="server" Text="Persona:" /></div>
+                                    <div class="col-lg-5 col-sm-6 text-left">
+                                        <asp:RadioButtonList ID="rbtnPersona" runat="server" RepeatDirection="Horizontal" CssClass="alineados verticalAlineado" AutoPostBack="true" OnSelectedIndexChanged="rbtnPersona_SelectedIndexChanged" ToolTip="Tipo Persona" CellSpacing="20">
+                                            <asp:ListItem Text="Moral" Value="M" Selected="True"/>
+                                            <asp:ListItem Text="Fisica" Value="F" />
+                                        </asp:RadioButtonList>
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 col-sm-6">
+                                    <div class="col-lg-3 col-sm-2 text-left"><asp:Label ID="Label18" runat="server" Text="R.F.C.:" /></div>
+                                    <div class="col-lg-6 col-sm-6 text-left">
+                                        <asp:TextBox ID="txtRFC" runat="server" placeholder="R.F.C." CssClass="input-medium" MaxLength="13" />                                        
+                                        <asp:RegularExpressionValidator ID="RegularExpressionValidator1" ValidationGroup="alta" ControlToValidate="txtRFC" Text="*" CssClass="errores" runat="server" ErrorMessage="El formato del R.F.C. Es incorrecto" ValidationExpression="^[A-Za-z]{3,4}[0-9]{6}[0-9A-Za-z]{3}$" />
+                                        <asp:RequiredFieldValidator ID="RequiredFieldValidator6" runat="server" ValidationGroup="alta" ControlToValidate="txtRFC" Text="*" CssClass="errores"  ErrorMessage="Necesita colocar el R.F.C." />
+                                    </div>           
+                                </div>
+                                <div class="col-lg-12 col-sm-12 text-center">                                                            
+                                    <div class="col-lg-12 col-sm-12 text-left"> 
+                                        <asp:Label ID="Label19" runat="server" Text="Razón Social:" />                                       
+                                        <asp:TextBox ID="txtArchivarNombre" runat="server" placeholder="Razón Social" CssClass="input-large" MaxLength="128" />
+                                        <asp:RequiredFieldValidator ControlToValidate="txtArchivarNombre" Text="*" CssClass="errores" ValidationGroup="alta" ID="RequiredFieldValidator7" runat="server" ErrorMessage="RequiredFieldValidator" />
+                                        <asp:Label ID="Label20" runat="server" Text="Nombre:" Visible="false" CssClass="alineados verticalAlineado" />
+                                        <asp:TextBox ID="txtNombre" runat="server" placeholder="Nombre" Visible="false" CssClass="input-medium alineados verticalAlineado" MaxLength="40" />
+                                        <asp:RequiredFieldValidator ControlToValidate="txtNombre" ID="RequiredFieldValidator8" runat="server" ErrorMessage="RequiredFieldValidator" Text="*" CssClass="errores" ValidationGroup="alta" />
+                                        <asp:TextBox ID="txtPaterno" runat="server" placeholder="Apellido Pat" Visible="false" CssClass="input-small alineados verticalAlineado" MaxLength="40"/>
+                                        <asp:RequiredFieldValidator ControlToValidate="txtPaterno" ID="RequiredFieldValidator9" runat="server" ErrorMessage="RequiredFieldValidator" Text="*" CssClass="errores" ValidationGroup="alta" />
+                                        <asp:TextBox ID="txtMaterno" runat="server" placeholder="Apellido Mat" Visible="false" CssClass="input-small alineados verticalAlineado" MaxLength="40"/>                                    
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 col-sm-6 marTop">
+                                    <div class="col-lg-3 col-sm-2 text-left"><asp:Label ID="Label23" runat="server" Text="Calle:" CssClass="alineados verticalAlineado" /></div>
+                                    <div class="col-lg-3 col-sm-6 text-left">
+                                        <asp:TextBox ID="txtCalle" runat="server" placeholder="Calle" CssClass="input-large alineados verticalAlineado" MaxLength="40"/>
+                                        <asp:RequiredFieldValidator ControlToValidate="txtCalle" ID="RequiredFieldValidator11" runat="server" ErrorMessage="RequiredFieldValidator" Text="*" CssClass="errores" ValidationGroup="alta" />
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 col-sm-6 marTop">
+                                    <div class="col-lg-3 col-sm-2 text-left"><asp:Label ID="Label25" runat="server" Text="No.:" CssClass="alineados verticalAlineado" /></div>
+                                    <div class="col-lg-3 col-sm-6 text-left">
+                                        <asp:TextBox ID="txtNumero" runat="server" placeholder="No." CssClass="input-mini alineados verticalAlineado" MaxLength="20"/>
+                                        <asp:RequiredFieldValidator ControlToValidate="txtNumero" ID="RequiredFieldValidator12" runat="server" ErrorMessage="RequiredFieldValidator" Text="*" CssClass="errores" ValidationGroup="alta" />
+                                    </div>
+                                    <div class="col-lg-3 col-sm-2 text-left">&nbsp;&nbsp;<asp:Label ID="Label32" runat="server" Text="Int.:" CssClass="alineados verticalAlineado" MaxLength="25"/></div>
+                                    <div class="col-lg-3 col-sm-6 text-left"><asp:TextBox ID="txtNumeroInt" runat="server" placeholder="Int." CssClass="input-mini alineados verticalAlineado" /></div>
+                                </div>
+                                <div class="col-lg-6 col-sm-6">
+                                    <div class="col-lg-3 col-sm-2 text-left"><asp:Label ID="Label24" runat="server" Text="Colonia:" CssClass="alineados verticalAlineado" /></div>
+                                    <div class="col-lg-3 col-sm-6 text-left">
+                                        <asp:TextBox ID="txtColonia" runat="server" CssClass="input-large verticalAlineado" MaxLength="40" placeholder="Colonia" />
+                                        <asp:RequiredFieldValidator ControlToValidate="txtColonia" ID="RequiredFieldValidator13" runat="server" ErrorMessage="RequiredFieldValidator" Text="*" CssClass="errores" ValidationGroup="alta" />
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 col-sm-6">
+                                    <div class="col-lg-3 col-sm-2 text-left"><asp:Label ID="Label29" runat="server" Text="Mun./Deleg.:" /></div>
+                                    <div class="col-lg-3 col-sm-6 text-left">
+                                        <asp:TextBox ID="txtDelegacion" runat="server" placeholder="Mun./Deleg." CssClass="input-large" MaxLength="50" />
+                                        <asp:RequiredFieldValidator ControlToValidate="txtDelegacion" ID="RequiredFieldValidator15" runat="server" ErrorMessage="RequiredFieldValidator" Text="*" CssClass="errores" ValidationGroup="alta" />
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 col-sm-6">
+                                    <div class="col-lg-3 col-sm-2 text-left"><asp:Label ID="Label30" runat="server" Text="Estado:" /></div>
+                                    <div class="col-lg-3 col-sm-6 text-left">
+                                        <asp:TextBox ID="txtEstado" runat="server" placeholder="Estado" CssClass="input-large" MaxLength="20" />
+                                        <asp:RequiredFieldValidator ControlToValidate="txtEstado" ID="RequiredFieldValidator16" runat="server" ErrorMessage="RequiredFieldValidator" Text="*" CssClass="errores" ValidationGroup="alta" />
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 col-sm-6">
+                                    <div class="col-lg-3 col-sm-2 text-left"><asp:Label ID="Label31" runat="server" Text="Ciudad:" /></div>
+                                    <div class="col-lg-3 col-sm-6 text-left">
+                                        <asp:TextBox ID="txtCiudad" runat="server" placeholder="Ciudad" CssClass="input-large" MaxLength="40" />
+                                        <asp:RequiredFieldValidator ControlToValidate="txtCiudad" ID="RequiredFieldValidator17" runat="server" ErrorMessage="RequiredFieldValidator" Text="*" CssClass="errores" ValidationGroup="alta" />
+                                    </div>                     
+                                </div>               
+                                <div class="col-lg-6 col-sm-6">
+                                    <div class="col-lg-3 col-sm-2 text-left"><asp:Label ID="Label26" runat="server" Text="C.P.:" /></div>
+                                    <div class="col-lg-3 col-sm-6 text-left">
+                                        <asp:TextBox ID="txtCP" runat="server" placeholder="C.P." CssClass="input-small" MaxLength="5" />
+                                        <cc1:FilteredTextBoxExtender ID="txtCP_FilteredTextBoxExtender" runat="server" BehaviorID="txtCP_FilteredTextBoxExtender" TargetControlID="txtCP" FilterType="Numbers" />
+                                        <asp:RequiredFieldValidator ControlToValidate="txtCP" ID="RequiredFieldValidator14" runat="server" ErrorMessage="RequiredFieldValidator" Text="*" CssClass="errores" ValidationGroup="alta" />
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 col-sm-6">
+                                    <div class="col-lg-3 col-sm-2 text-left"><asp:Label ID="Label27" runat="server" Text="Email:" /></div>
+                                    <div class="col-lg-3 col-sm-6 text-left">
+                                        <asp:TextBox ID="txtEMail" runat="server" placeholder="Email" CssClass="input-large" MaxLength="40" />
+                                        <asp:RequiredFieldValidator ControlToValidate="txtEMail" ID="RequiredFieldValidator18" runat="server" ErrorMessage="Debe indicar el Email" Text="*" CssClass="errores" ValidationGroup="alta" />
+                                        <asp:RegularExpressionValidator ControlToValidate="txtEMail" ValidationExpression ="^\w+[\w-\.]*\@\w+((-\w+)|(\w*))\.[a-z]{2,3}$" ID="RegularExpressionValidator2" runat="server" ErrorMessage="El Email no tiene el formato correcto"  Text="*" CssClass="errores" ValidationGroup="alta" /> 
+                                    </div>
+                                </div>
+                                <div class="col-lg-12 col-sm-12">
+                                    <div class="col-lg-2 col-sm-2 text-left"><asp:Label ID="Label33" runat="server" Text="Referencia:" /></div>
+                                    <div class="col-lg-10 col-sm-10 text-left">
+                                        <asp:TextBox ID="txtReferenciaFacCliente" runat="server" placeholder="Referencia" CssClass="input-large" MaxLength="50"/>
+                                    </div>                     
+                                </div>
+                                <div class="col-lg-12 col-sm-12">               
+                                    <div class="col-lg-6 col-sm-6 text-center marTop"><asp:Button ID="btnNuevoCliente" runat="server" Text="Guardar Cambios" ToolTip="Guardar Cambios" CssClass="btn btn-success alineados" OnClick="btnNuevoCliente_Click" /></div>
+                                    <div class="col-lg-6 col-sm-6 text-center marTop"><asp:Button ID="btnCancelarCliente" runat="server" Text="Solicitar Factura" ToolTip="Solicitar Factura" CssClass="btn btn-success alineados" OnClick="btnCancelarCliente_Click" /></div>
+                                </div>
+                               </asp:Panel>                                 
+                               <div class="col-lg-12 col-sm-12 text-center marTop marBot">
+                                <asp:Button ID="btnImprimir" runat="server" Text="Imprimir" Target="_blank" CssClass="btn btn-success" onclick="btnImprimir_Click" />&nbsp;&nbsp;
+                                <asp:Button ID="btnCancelarImpresion" runat="server" Text="Cerrar" CssClass="btn btn-danger" onclick="btnCancelarImpresion_Click" />
+                            </div>  
+                        </asp:Panel>
+                    </asp:Panel>           
+                </ContentTemplate>
+            </asp:UpdatePanel>
+</asp:Content>

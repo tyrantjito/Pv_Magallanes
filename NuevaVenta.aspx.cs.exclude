@@ -1,0 +1,1233 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Web.Services;
+using System.Web.Script.Services;
+using System.Data;
+using System.Data.SqlClient;
+using System.Configuration;
+using System.Diagnostics;
+using Telerik.Web.UI;
+using iTextSharp.text.pdf;
+using System.IO;
+using E_Utilities;
+
+public partial class NuevaVenta : System.Web.UI.Page
+{
+    List<Venta> articulosVenta;
+    decimal subtotal, iva, totalVenta;
+    string usuarioLog;
+    Fechas fechas = new Fechas();
+    
+    protected void Page_Load(object sender, EventArgs e)
+    {
+        CierreCaja cierre = new CierreCaja();
+        
+        cierre.FechaDia = fechas.obtieneFechaLocal().ToString("yyyy-MM-dd");
+        cierre._horaDia = fechas.obtieneFechaLocal().ToString("HH:mm:ss");
+        try
+        {
+            cierre.Punto = Convert.ToInt32(Request.QueryString["p"]);
+        }
+        catch (Exception) {
+            string alerta = "alert('Su sesión a caducado, vuelva a ingresar')";
+            ScriptManager.RegisterStartupScript(this, typeof(Page), "login", alerta, true);
+            Response.Redirect("Default.aspx");
+        }
+        cierre.existeCierreDia();
+        if (cierre.cierreDia)
+        {
+            string alerta = "alert('Ya se ha realizado el corte del día y no es posible realizar más ventas por el día de hoy')";
+            ScriptManager.RegisterStartupScript(this, typeof(Page), "cierre", alerta, true);                
+        }
+        if (cierre.cierreDia)
+            Response.Redirect("Default.aspx");
+
+        inactivaPrecioVenta();
+            
+        if (!IsPostBack)
+        {
+            lblError.Text = "";
+            lblProducto.Text = "";
+            txtReferencia.Text = "";
+            ddlBanco.SelectedValue = "";
+            ddlTarjeta.SelectedValue = "";
+            txtReferencia.Enabled = false;
+            ddlBanco.Enabled = false;
+            ddlTarjeta.Enabled = false;
+            Label3.Enabled = false;
+            Label4.Enabled = false;
+            imgProducto.Visible = false;
+            Session["venta"] = null;
+            Session["idVenta"] = 0;
+            grvVenta.DataSource = null;
+            grvVenta.DataBind();
+            lblSubtotal.Text = "$0.00";
+            lblTotal.Text = "$0.00";
+            lblIva.Text = "$0.00";
+            RequiredFieldValidator1.Enabled = false;
+            RequiredFieldValidator2.Enabled = false;
+            RequiredFieldValidator5.Enabled = false;
+            btnAceptarVenta.Visible = false;
+            btnCancelarVenta.Visible = false;
+            btnAgregar.Visible = false;
+            txtNotas.Text = "";
+            RadAutoCompleteBox.Entries.Clear();
+            RadAutoCompleteBox.TextSettings.SelectionMode = (RadAutoCompleteSelectionMode)Enum.Parse(typeof(RadAutoCompleteSelectionMode), "Single", true);
+            txtProd.Attributes.Add("onkeypress", "handleKeyPress(event);");
+        }
+            
+    }
+
+
+
+
+    protected void ddlFormaPago_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (ddlFormaPago.SelectedValue != "E")
+        {
+            txtReferencia.Text = "";
+            ddlBanco.SelectedValue = "";
+            ddlTarjeta.SelectedValue = "";
+            txtReferencia.Enabled = true;
+            ddlBanco.Enabled = true;
+            ddlTarjeta.Enabled = true;
+            Label3.Enabled = true;
+            Label4.Enabled = true;
+            RequiredFieldValidator1.Enabled = true;
+            RequiredFieldValidator2.Enabled = true;
+            RequiredFieldValidator5.Enabled = true;
+        }
+        else {
+            txtReferencia.Text = "";
+            ddlBanco.SelectedValue = "";
+            ddlTarjeta.SelectedValue = "";
+            txtReferencia.Enabled = false;
+            ddlBanco.Enabled = false;
+            ddlTarjeta.Enabled = false;
+            Label3.Enabled = false;
+            Label4.Enabled = false;
+            RequiredFieldValidator1.Enabled = false;
+            RequiredFieldValidator2.Enabled = false;
+            RequiredFieldValidator5.Enabled = false;
+        }
+    }
+
+    [WebMethod]
+    [ScriptMethod]
+    public static List<string> obtieneProductos(string prefixText)
+    {
+        List<string> lista = new List<string>();
+        SqlConnection conexionBD = new SqlConnection(ConfigurationManager.ConnectionStrings["PVW"].ToString());
+        try
+        {
+            conexionBD.Open();
+            SqlCommand cmd = new SqlCommand("select aa.idarticulo+' / '+c.descripcion as descripcion from articulosalmacen aa inner join catproductos c on c.idproducto=aa.idarticulo where aa.idalmacen=2 " , conexionBD);
+            SqlDataAdapter da = new SqlDataAdapter(cmd);
+            IDataReader lector = cmd.ExecuteReader();
+            while (lector.Read())
+            {
+                lista.Add(lector.GetString(0));
+            }
+            lector.Close();
+        }
+        catch (Exception) { }
+        finally { conexionBD.Close(); }
+        return lista;
+    }
+
+    protected void RadAutoCompleteBox1_TextChanged(object sender, AutoCompleteTextEventArgs e)
+    {
+        lblProducto.Text = "";
+        lblError.Text = "";
+        imgProducto.Visible = false;
+        lblCostoVenta.Text = "0.00";
+        txtCantidad.Text = "";
+        txtVentaAgranel.Text = "";
+        lblTotalProducto.Text = "";
+        txtCantidad.Enabled = true;
+        lblCostoVenta.Enabled = true;
+        inactivaPrecioVenta();
+        try
+        {
+            if (RadAutoCompleteBox.Text != "")
+            {
+                string[] argumentos = RadAutoCompleteBox.Text.ToString().Split(new char[] { '/' });
+                string[] producto = argumentos[1].Trim().Split(new char[] { ';' });
+                Producto produc = new Producto();
+                produc.NombrePorducto = producto[0].Trim();
+                
+                    produc.ClaveProducto = Convert.ToString(argumentos[0].Trim());
+                    object[] valor = produc.obtieneProducto();
+                    if (Convert.ToBoolean(valor[0]))
+                    {
+                        imgProducto.Visible = true;
+                        if (Convert.ToString(valor[1]) != "")
+                        {
+                            int pv;
+                            try { pv = Convert.ToInt32(Request.QueryString["p"]); }
+                            catch (Exception){ pv = 0; }
+                            if (pv != 0)
+                            {
+                                produc.Isla = pv;
+                                produc.existeIsla();                                
+                                lblProducto.Text = produc.ClaveProducto;
+                                imgProducto.ImageUrl = "~/imgProductos.ashx?id=" + produc.ClaveProducto.Trim();
+                                object[] venta = produc.obtienePrecioVenta();
+                                if (Convert.ToBoolean(venta[0]))
+                                    lblCostoVenta.Text = Convert.ToDecimal(venta[1]).ToString();
+                                else
+                                    lblCostoVenta.Text = "0.00";
+
+                                object[] ventaAgranel = produc.vendeAgranel();
+                                if (Convert.ToBoolean(ventaAgranel[0]))
+                                    txtVentaAgranel.Visible = Convert.ToBoolean(ventaAgranel[1]);
+                                else
+                                    txtVentaAgranel.Visible = false;
+                                
+                                if (lblCostoVenta.Text == "0.00")
+                                {
+                                    lblProducto.Text = "El producto no esta disponible para su venta";
+                                    imgProducto.ImageUrl = "img/noDisponible.png";
+                                    txtCantidad.Enabled = false;
+                                    txtVentaAgranel.Visible = false;
+                                    inactivaPrecioVenta();
+                                    lblCostoVenta.Enabled = false;
+                                }                                
+                            }
+                            else
+                                lblError.Text = "Su sesión a caducado por favor vuelva a ingresar";
+                        }
+                        else
+                        {
+                            lblProducto.Text = "El producto no existe";
+                            imgProducto.ImageUrl = "img/noDisponible.png";
+                        }
+                    }
+                    else
+                    {
+                        lblProducto.Text = "";
+                        imgProducto.Visible = false;
+                        lblError.Text = Convert.ToString(valor[1]);
+                    }                
+            }
+            else
+            {
+                lblProducto.Text = "";
+                imgProducto.Visible = false;
+            }
+        }
+        catch (Exception ex) { lblProducto.Text = ""; lblError.Text = ex.Message; imgProducto.Visible = false; }
+    }
+
+    protected void txtProducto_TextChanged(object sender, EventArgs e)
+    {
+        
+    }
+
+    protected void txtCantidad_TextChanged(object sender, EventArgs e)
+    {
+        if (!txtVentaAgranel.Visible)
+            lblTotalProducto.Text = calculaTotal(lblCostoVenta.Text, txtCantidad.Text).ToString("C2");
+        else 
+            lblTotalProducto.Text = txtVentaAgranel.Text = calculaImporteGranel(lblCostoVenta.Text, txtCantidad.Text, txtVentaAgranel.Text, 1);                    
+    }
+
+    private string calculaImporteGranel(string costo, string cantidad, string monto, int calculo)
+    {
+        string valorRet = "0";
+        decimal total = 0;
+        string valor = "";
+        for (int j = 0; j < costo.Length; j++)
+        {
+            if (char.IsDigit(costo[j]))
+                valor = valor.Trim() + costo[j];
+            else
+            {
+                if (costo[j] == '.')
+                    valor = valor.Trim() + costo[j];
+            }
+        }
+        string venta = valor.Trim();
+
+        try
+        {
+            decimal valorUnit = 0;
+            decimal cant = 0;
+            decimal importe = 0;
+
+            if (calculo == 1)
+            {
+                valorUnit = Convert.ToDecimal(venta);
+                cant = Convert.ToDecimal(cantidad);
+                importe = cant * valorUnit;
+                valorRet = importe.ToString("F2");
+                total = importe;
+            }
+            else {
+                valorUnit = Convert.ToDecimal(venta);
+                importe = Convert.ToDecimal(monto);
+                cant = importe / valorUnit;
+                valorRet = cant.ToString("F3");
+                total = importe;
+            }
+        }
+        catch (Exception ex) { valor = "0"; }
+
+        if (total == 0)
+            btnAgregar.Visible = false;
+        else
+            btnAgregar.Visible = true;
+
+        return valorRet;
+    }
+
+    protected void lblCostoVenta_TextChanged(object sender, EventArgs e)
+    {
+        Producto produc = new Producto();
+        produc.ClaveProducto = lblProducto.Text;
+        int pv;
+        try { pv = Convert.ToInt32(Request.QueryString["p"]); }
+        catch (Exception)
+        {
+            pv = 0;
+        }
+        produc.Isla = pv;
+        object[] precio = produc.obtienePrecioVenta();
+        if ((bool)precio[0]) {
+            decimal valor = (decimal)precio[1];
+            decimal precioV = Convert.ToDecimal(lblCostoVenta.Text);
+            if (precioV > valor)
+            {
+                lblError.Text = "El precio de venta no puede ser mayor al último precio de venta vigente";
+                lblCostoVenta.Text = "0.00";
+            }            
+        }
+        if (!txtVentaAgranel.Visible)
+            lblTotalProducto.Text = calculaTotal(lblCostoVenta.Text, txtCantidad.Text).ToString("C2");
+        else
+            lblTotalProducto.Text = txtVentaAgranel.Text = calculaImporteGranel(lblCostoVenta.Text, txtCantidad.Text, txtVentaAgranel.Text, 1);
+    }
+
+    protected void txtVentaAgranel_TextChanged(object sender, EventArgs e)
+    {
+        txtCantidad.Text = calculaImporteGranel(lblCostoVenta.Text, txtCantidad.Text, txtVentaAgranel.Text, 2);
+        lblTotalProducto.Text = txtVentaAgranel.Text;
+    }
+
+    private decimal calculaTotal(string venta, string cantidad)
+    {
+        decimal total = 0;
+        decimal precioVenta = 0;
+        int cantidadProd = 0;
+        string valor = "";
+        for (int j = 0; j < venta.Length; j++)
+        {
+            if (char.IsDigit(venta[j]))
+                valor = valor.Trim() + venta[j];
+            else
+            {
+                if (venta[j] == '.')
+                    valor = valor.Trim() + venta[j];
+            }
+        }
+        venta = valor.Trim();
+        if (venta == "" || cantidad == "" || venta == "0" || cantidad == "0")
+            total = 0;
+        else
+        {
+            try
+            {
+                precioVenta = Convert.ToDecimal(venta);
+                cantidadProd = Convert.ToInt32(cantidad);
+            }
+            catch (Exception) { }
+            finally {
+                total = precioVenta * cantidadProd;
+            }
+        }
+        if (total == 0)
+            btnAgregar.Visible = false;
+        else
+            btnAgregar.Visible = true;
+
+        return total;
+    }
+
+    protected void btnAgregar_Click(object sender, EventArgs e)
+    {
+        lblError.Text = "";
+        int registro = 0;
+        try { registro = Convert.ToInt32(Session["idVenta"].ToString()); }
+        catch (Exception) { registro = 0; }
+        if (Session["venta"] != null)
+            articulosVenta = (List<Venta>)Session["venta"];
+        else
+            articulosVenta = new List<Venta>();
+
+        string[] argumentos = RadAutoCompleteBox.Text.ToString().Split(new char[] { '/' });
+        string[] producto = argumentos[1].Trim().Split(new char[] { ';' });
+            Venta articulo = new Venta();
+            articulo.clave = lblProducto.Text;
+            articulo.producto = producto[0].Trim();
+            articulo.precio = lblCostoVenta.Text;
+            articulo.cantidad = txtCantidad.Text;
+            articulo.total = lblTotalProducto.Text;
+            articulo.renglon = (registro + 1).ToString();
+            try
+            {
+                articulosVenta.Add(articulo);
+                btnAceptarVenta.Visible = true;
+                btnCancelarVenta.Visible = true;
+                Session["venta"] = articulosVenta;
+                Session["idVenta"] = registro + 1;
+            }
+            catch (Exception) { }
+            finally
+            {
+                btnAgregar.Visible = false;
+                UpdatePanel3.Update();
+                if (articulosVenta != null)
+                    grvVenta.DataSource = articulosVenta;
+                else
+                    grvVenta.DataSource = null;
+                //txtProducto.Text = "";
+                txtCantidad.Text = "";
+                lblProducto.Text = "";
+                txtVentaAgranel.Text = "";
+                txtVentaAgranel.Visible = false;
+                lblTotalProducto.Text = "";
+                lblCostoVenta.Text = "";
+                imgProducto.ImageUrl = null;
+                imgProducto.Visible = false;
+                grvVenta.DataBind();
+                grvVenta.PageIndex = grvVenta.PageCount;
+                obtieneTotales(articulosVenta);
+                RadAutoCompleteBox.Entries.Clear();
+                RadAutoCompleteBox.TextSettings.SelectionMode = (RadAutoCompleteSelectionMode)Enum.Parse(typeof(RadAutoCompleteSelectionMode), "Single", true);
+            }
+       
+    }
+
+    protected void grvVenta_PageIndexChanging(object sender, GridViewPageEventArgs e)
+    {
+        articulosVenta = (List<Venta>)Session["venta"];
+        grvVenta.PageIndex = e.NewPageIndex;
+        grvVenta.DataSource = articulosVenta;
+        grvVenta.DataBind();
+        UpdatePanel3.Update();
+    }
+
+    protected void grvVenta_RowEditing(object sender, GridViewEditEventArgs e)
+    {
+        articulosVenta = (List<Venta>)Session["venta"];
+        grvVenta.EditIndex = e.NewEditIndex;
+        Session["venta"] = articulosVenta;
+        grvVenta.DataSource = articulosVenta;
+        grvVenta.DataBind();
+        grvVenta.PageIndex = grvVenta.PageCount;
+        obtieneTotales(articulosVenta);
+        UpdatePanel3.Update();
+    }
+
+    protected void grvVenta_RowCancelingEdit(object sender, GridViewCancelEditEventArgs e)
+    {
+        articulosVenta = (List<Venta>)Session["venta"];
+        grvVenta.EditIndex = -1;
+        Session["venta"] = articulosVenta;
+        grvVenta.DataSource = articulosVenta;
+        grvVenta.DataBind();
+        grvVenta.PageIndex = grvVenta.PageCount;
+        obtieneTotales(articulosVenta);
+        UpdatePanel3.Update();
+    }
+
+    protected void txtModCantidad_TextChanged(object sender, EventArgs e)
+    {
+        articulosVenta = (List<Venta>)Session["venta"];
+        Label lblArticulo = (Label)grvVenta.Rows[grvVenta.EditIndex].FindControl("lblIdArticulo");
+        TextBox txtCantidadMod = (TextBox)grvVenta.Rows[grvVenta.EditIndex].FindControl("txtModCantidad");
+        Label lblTotalArt = (Label)grvVenta.Rows[grvVenta.EditIndex].FindControl("lblTotalMod");
+        Label lblPrecioMod = (Label)grvVenta.Rows[grvVenta.EditIndex].FindControl("lblPrecioMod");
+        lblTotalArt.Text = calculaTotal(lblPrecioMod.Text, txtCantidadMod.Text).ToString("C2");
+        string cant = txtCantidadMod.Text;
+        string tot = lblTotalArt.Text;        
+        int id = Convert.ToInt32(lblArticulo.Text);
+        if (cant != "0" && cant != "")
+        {
+            foreach (Venta item in articulosVenta)
+            {
+                if (item.renglon.Equals(id))
+                {
+                    item.cantidad = cant;
+                    item.total = tot;
+                }
+            }
+        }
+        Session["venta"] = articulosVenta;
+        grvVenta.DataSource = articulosVenta;
+        grvVenta.DataBind();
+        obtieneTotales(articulosVenta);
+    }
+
+    protected void grvVenta_RowUpdating(object sender, GridViewUpdateEventArgs e)
+    {
+        TextBox txtCantidadMod = (TextBox)grvVenta.Rows[grvVenta.EditIndex].FindControl("txtModCantidad");
+        Label lblTotalArt = (Label)grvVenta.Rows[grvVenta.EditIndex].FindControl("lblTotalMod");        
+        Label lblIdArticulo = (Label)grvVenta.Rows[grvVenta.EditIndex].FindControl("lblIdArticulo");
+        articulosVenta = (List<Venta>)Session["venta"];
+        string id = lblIdArticulo.Text;
+        string cant = txtCantidadMod.Text;
+        string tot = lblTotalArt.Text;
+        if (cant != "0" && cant != "")
+        {
+            foreach (Venta item in articulosVenta) { 
+                if(item.renglon.Equals(id)){
+                    item.cantidad = cant;
+                    item.total = tot;
+                }
+            }
+        }
+        grvVenta.EditIndex = -1;
+        Session["venta"] = articulosVenta;
+        grvVenta.DataSource = articulosVenta;
+        grvVenta.DataBind();
+        grvVenta.PageIndex = grvVenta.PageCount;
+        obtieneTotales(articulosVenta);
+        UpdatePanel3.Update();
+    }
+
+    protected void grvVenta_RowDeleting(object sender, GridViewDeleteEventArgs e)
+    {
+        string id = grvVenta.DataKeys[e.RowIndex].Value.ToString();
+        articulosVenta = (List<Venta>)Session["venta"];
+        foreach (Venta item in articulosVenta)
+        {
+            if (item.renglon.Equals(id))
+            {
+                articulosVenta.Remove(item);
+                break;
+            }
+        }
+        Session["venta"] = articulosVenta;
+        grvVenta.DataSource = articulosVenta;
+        grvVenta.DataBind();
+        grvVenta.PageIndex = grvVenta.PageCount;
+        obtieneTotales(articulosVenta);
+        UpdatePanel3.Update();
+    }
+
+    private void obtieneTotales(List<Venta> articulosVendidos)
+    {        
+        subtotal = 0;
+        iva = 0;
+        totalVenta = 0;
+        decimal importe = 0;
+        decimal porcIva = Convert.ToDecimal(0.16);
+        if (articulosVendidos != null)
+        {
+            foreach (Venta item in articulosVendidos)
+            {
+                string venta = item.total;
+                if (venta != "")
+                {
+                    venta = convierteMontos(venta);
+                }
+                if (venta == "")
+                    importe = 0;
+                else
+                {
+                    try { importe = Convert.ToDecimal(venta); }
+                    catch (Exception) { importe = 0; }
+                }
+
+                totalVenta = totalVenta + importe;                
+            }
+
+            subtotal = totalVenta; /// (1 + porcIva);
+            
+            
+            //iva = totalVenta - subtotal;
+            
+            if (articulosVendidos.Count > 0)
+            {
+                btnAceptarVenta.Visible = true;
+                btnCancelarVenta.Visible = true;
+            }
+            else
+            {
+                btnAceptarVenta.Visible = false;
+                btnCancelarVenta.Visible = true;
+            }
+        }
+        else {
+            btnAceptarVenta.Visible = false;
+            btnCancelarVenta.Visible = false;
+        }
+        lblSubtotal.Text = subtotal.ToString("C2");
+        lblIva.Text = iva.ToString("C2");
+        lblTotal.Text = totalVenta.ToString("C2");
+
+    }
+
+    private string convierteMontos(string importe) {
+        if (importe != "")
+        {
+            importe = importe.Replace('$', ',');
+            importe = importe.Replace(',', ' ');
+            string valor = "";
+            for (int j = 0; j < importe.Length; j++)
+            {
+                if (char.IsDigit(importe[j]))
+                    valor = valor.Trim() + importe[j];
+                else
+                {
+                    if (importe[j] == '.')
+                        valor = valor.Trim() + importe[j];
+                }
+            }
+            importe = valor.Trim();
+        }
+        else
+            importe = "0";
+        return importe;
+    }
+
+    protected void btnAceptarVenta_Click(object sender, EventArgs e)
+    {
+        if (Request.QueryString["p"] != null && Request.QueryString["u"] != null && Request.QueryString["c"] != null)
+        {
+            object[] ticket = new object[16];
+            ticket[0] = ticket[1] = Request.QueryString["p"];
+            ticket[2] = Request.QueryString["c"];
+            ticket[3] = Request.QueryString["u"];
+            ticket[4] = convierteMontos(lblSubtotal.Text);
+            ticket[5] = convierteMontos(lblIva.Text);
+            ticket[6] = convierteMontos(lblTotal.Text);
+            ticket[7] = 16;
+            ticket[8] = fechas.obtieneFechaLocal();
+            ticket[9] = fechas.obtieneFechaLocal().ToString("HH:mm:ss");
+            ticket[10] = ddlFormaPago.SelectedValue;
+            ticket[11] = txtReferencia.Text;
+            ticket[12] = ddlBanco.Text;
+            ticket[13] = txtNotas.Text;
+            ticket[14] = Session["venta"];
+            ticket[15] = ddlTarjeta.SelectedValue;
+            GeneraVenta genera = new GeneraVenta();
+            object[] generado = genera.generaVenta(ticket);
+            if (Convert.ToBoolean(generado[0]))
+            {
+                Session["venta"] = null;
+                Session["idVenta"] = 0;
+                lblTicket.Text = generado[1].ToString();
+                lblErrorFacCliente.Text = "";
+                txtCP.Text = "";
+                txtArchivarNombre.Text = "";
+                txtNombre.Text = "";
+                txtPaterno.Text = "";
+                txtMaterno.Text = "";
+                txtRFC.Text = "";
+                txtCalle.Text = "";
+                txtNumero.Text = "";
+                txtColonia.Text = "";
+                txtCiudad.Text = "";
+                txtEstado.Text = "";
+                txtEMail.Text = "";
+                txtNumeroInt.Text = "";
+                txtDelegacion.Text = "";
+                txtReferenciaFacCliente.Text = "";                
+                txtRFCVerifica.Text = "";
+                rbtnPersona.SelectedValue = "M";
+                chkFacturacionPend.Checked = false;
+                pnlTicket.Visible = true;
+                PanelMask.Visible = true;
+
+                articulosVenta = (List<Venta>)ticket[14];                
+                registraNotificaciones(articulosVenta, Convert.ToInt32(ticket[0]), Convert.ToInt32(ticket[2]), Convert.ToString(ticket[3]), Convert.ToString(ticket[8]), Convert.ToString(ticket[9]), lblTicket.Text);
+
+            }
+            else {
+                lblTicket.Text = "";
+                pnlTicket.Visible = false;
+                PanelMask.Visible = false;
+                lblError.Text = "Error al generar la venta: " + generado[1].ToString();
+            }            
+        }
+        else {
+            btnAgregar.Visible = false;
+            btnAceptarVenta.Visible = false;
+            btnCancelarVenta.Visible = false;
+            lblError.Text = "Su sesión a caducado, vuelva a ingresar para realizar de nuevo la venta";
+        }
+    }
+
+    private void registraNotificaciones(List<Venta> articulosVenta, int isla, int caja, string usuario, string fecha, string hora, string ticketGenerado)
+    {
+        int notificaciones = 0;
+        foreach (Venta item in articulosVenta)
+        {            
+            Producto produc = new Producto();
+            produc.ClaveProducto = item.clave;
+            produc.Isla = isla;
+            //Notificacion para precios de venta menores 
+
+            object[] venta = produc.obtienePrecioVenta();
+            decimal precioVenta = 0;
+            if (Convert.ToBoolean(venta[0]))
+            {
+                precioVenta = Convert.ToDecimal(venta[1]);
+                if (Convert.ToDecimal(item.precio) < precioVenta)
+                {
+                    if (Convert.ToDecimal(item.precio) >= 0)
+                    {
+                        Notificaciones notifi = new Notificaciones();
+                        notifi.Articulo = item.clave;
+                        notifi.Punto = isla;
+                        notifi.Caja = caja;
+                        notifi.Usuario = usuario;
+                        notifi.Fecha = Convert.ToDateTime(fecha);
+                        notifi.Entrada = Convert.ToInt32(ticketGenerado);
+                        notifi.Estatus = "P";
+                        notifi.Clasificacion = 1;
+                        notifi.Extra = item.precio.ToString();
+                        notifi.Origen = "V";
+                        notifi.armaNotificacion();
+                        notifi.agregaNotificacion();
+                        if ((bool)notifi.Retorno[0])
+                            notificaciones++;
+                    }
+                }
+            }
+
+            //Notificacion para existencias negativas
+
+            int existenciaActual = produc.obtieneExistencia(produc.ClaveProducto, isla.ToString());
+            if (existenciaActual < 0) {
+                Notificaciones notifi = new Notificaciones();
+                notifi.Articulo = item.clave;
+                notifi.Punto = isla;                
+                notifi.Usuario = usuario;
+                notifi.Fecha = Convert.ToDateTime(fecha);
+                notifi.Estatus = "P";
+                notifi.Clasificacion = 3;
+                notifi.Extra = existenciaActual.ToString();
+                notifi.Origen = "V";
+                notifi.armaNotificacion();
+                notifi.agregaNotificacion();
+                if ((bool)notifi.Retorno[0])
+                    notificaciones++;
+            }
+        }
+
+        if (notificaciones != 0)
+        {
+            lblError.Text = "Se notificó al administrador del sistema posibles fallas de la aplicación";
+        }
+            
+    }
+    protected void btnCancelarVenta_Click(object sender, EventArgs e)
+    {
+        cancelaDatos();
+    }
+    protected void btnImprimir_Click(object sender, EventArgs e)
+    {
+        TicketPv impTicket = new TicketPv();
+        impTicket.PuntoVenta = Convert.ToInt32(Request.QueryString["p"]);
+        impTicket.Ticket = Convert.ToInt32(lblTicket.Text);
+        impTicket.Caja = Convert.ToInt32(Request.QueryString["c"]);
+        string Archivo = impTicket.GenerarTicket();
+        if (Archivo != "")
+        {
+            try
+            {
+                System.IO.FileInfo filename = new System.IO.FileInfo(Archivo);
+                if (filename.Exists)
+                {
+                    string ruta = HttpContext.Current.Server.MapPath("~/Tickets/TMP");
+                    string archivoCopia = ruta + "\\" + filename.Name;
+
+                    //si no existe la carpeta temporal la creamos 
+                    if (!(Directory.Exists(ruta)))
+                        Directory.CreateDirectory(ruta);
+
+                    PdfReader reader = new PdfReader(Archivo);
+                    PdfStamper stamper = new PdfStamper(reader, new FileStream(archivoCopia, FileMode.Create));
+                    AcroFields fields = stamper.AcroFields;
+                    stamper.JavaScript = "this.print(true);\r";
+                    stamper.FormFlattening = true;
+                    stamper.Close();
+                    reader.Close();
+
+                    FileInfo copia = new FileInfo(archivoCopia);
+
+                    Response.Redirect("TicketPdf.aspx?a=" + copia.Name);
+                    //Proceso para Imprimir Documento
+                    /*Process proc = new Process();
+                    proc.StartInfo.FileName = Archivo;
+                    proc.Start();
+                    myPDF.Attributes.Add("src", Archivo);
+                    */
+
+                    //Response.Write("<script type='text/javascript'>window.open('TicketPdf.aspx?a=" + Archivo + "','','status=yes, directories=no, location=no, menubar=no, resizable=no, scrollbars=no, titlebar=no, toolbar=no,width=700,height=800,left=0,top=0');</script>");
+
+                    // Impresion directa
+                    /*proc.StartInfo.UseShellExecute = true;
+                    proc.StartInfo.CreateNoWindow = true;
+                    proc.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                    proc.StartInfo.Verb = "print";*/
+
+                    // abre pdf
+                    /*proc.Start();
+                    proc.WaitForExit();
+                    proc.Close();*/
+                }
+            }
+            catch (Exception ex)
+            {
+                lblError.Text = ex.Message;
+            }
+        }
+        else
+            lblError.Text = "Error al imprimir el ticket: " + lblTicket.Text + ", vuelva intentarlo";    
+
+        cancelaDatos();
+        
+    }
+    protected void btnCancelarImpresion_Click(object sender, EventArgs e)
+    {
+        Session["venta"] = null;
+        Session["idVenta"] = 0;        
+        pnlTicket.Visible = false;
+        PanelMask.Visible = false;
+        cancelaDatos();        
+    }
+
+    private void cancelaDatos() {
+        lblError.Text = "";
+        txtReferencia.Text = "";
+        ddlBanco.SelectedValue = "";
+        ddlTarjeta.SelectedValue = "";
+        txtReferencia.Enabled = false;
+        ddlBanco.Enabled = false;
+        ddlTarjeta.Enabled = false;
+        Label3.Enabled = false;
+        Label4.Enabled = false;
+        imgProducto.Visible = false;
+        Session["venta"] = null;
+        Session["idVenta"] = 0;
+        grvVenta.EditIndex = -1;
+        grvVenta.DataSource = null;
+        grvVenta.DataBind();
+        lblSubtotal.Text = "$0.00";
+        lblTotal.Text = "$0.00";
+        lblIva.Text = "$0.00";
+        RequiredFieldValidator1.Enabled = false;
+        RequiredFieldValidator2.Enabled = false;
+        RequiredFieldValidator5.Enabled = false;
+        btnAceptarVenta.Visible = false;
+        btnCancelarVenta.Visible = false;
+        btnAgregar.Visible = false;
+        ddlFormaPago.SelectedValue = "E";
+        txtNotas.Text = "";
+        obtieneTotales((List<Venta>)Session["venta"]);
+        lblTicket.Text = "";
+        Response.Redirect("PuntoVenta.aspx?u=" + Request.QueryString["u"] + "&nu=" + Request.QueryString["nu"] + "&p=" + Request.QueryString["p"] + "&np=" + Request.QueryString["np"] + "&c=" + Request.QueryString["c"]);
+    }
+
+    protected void chkFacturacionPend_CheckedChanged(object sender, EventArgs e)
+    {
+        if (chkFacturacionPend.Checked)
+        {
+            Label34.Visible = true;
+            txtRFCVerifica.Visible = true;
+            btnRevisaRFC.Visible = true;
+            lblRazon.Visible = true;              
+        }
+        else
+        {            
+            Label34.Visible = false;
+            lblRazon.Visible = false;
+            txtRFC.Text = "";
+            lblRazon.Text = "";
+            txtRFCVerifica.Visible = false;
+            btnRevisaRFC.Visible = false;            
+        }
+    }
+
+    protected void rbtnPersona_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        string tipoPersona = rbtnPersona.SelectedValue;
+        if (tipoPersona == "M")
+        {
+            Label20.Visible =  false;
+            Label19.Visible = txtArchivarNombre.Visible = true;
+            txtNombre.Visible = txtPaterno.Visible = txtMaterno.Visible = false;
+            if (txtRFC.Text.Trim().Length != 12)
+                lblErrorFacCliente.Text = "El R.F.C. No coincide con el tipo de persona seleccionado, verifique sus datos.";
+        }
+        else if (tipoPersona == "F")
+        {
+            Label20.Visible =  true;
+            Label19.Visible = txtArchivarNombre.Visible = false;
+            txtNombre.Visible = txtPaterno.Visible = txtMaterno.Visible = true;
+            if (txtRFC.Text.Trim().Length != 13)
+                lblErrorFacCliente.Text = "El R.F.C. No coincide con el tipo de persona seleccionado, verifique sus datos.";
+        }
+    }
+
+    protected void btnNuevoCliente_Click(object sender, EventArgs e)
+    {
+        if (rbtnPersona.SelectedValue == "M" && txtRFC.Text.Trim().Length == 12 || rbtnPersona.SelectedValue == "F" && txtRFC.Text.Trim().Length == 13)
+        {
+            ClientesDatos datosCli = new ClientesDatos();
+            string tipoPersona = rbtnPersona.SelectedValue;
+            lblErrorFacCliente.Text = "";
+            string nombre = "";
+            string paterno = "";
+            string materno = "";
+            string razon = "";
+            string cp = "";
+            string rfc = "";
+            string fechaRFC = "";
+            string edad = "";
+            string fechaNacimiento = "";
+            bool vacios = false;
+            if (tipoPersona == "M")
+            {
+                razon = txtArchivarNombre.Text;
+                if (razon.Trim() == "")
+                {
+                    vacios = true;
+                    lblErrorFacCliente.Text = "Necesita colocar la razón social.";
+                }
+                rfc = txtRFC.Text.ToUpper();
+                if (rfc.Length != 12)
+                {
+                    vacios = true;
+                    lblErrorFacCliente.Text = "El R.F.C. No corresponde con el tipo de persona.";
+                }
+                fechaRFC = rfc.Substring(3, 6);
+            }
+            else if (tipoPersona == "F")
+            {
+                nombre = txtNombre.Text;
+                paterno = txtPaterno.Text;
+                materno = txtMaterno.Text;
+                if (nombre.Trim() == "" || paterno.Trim() == "")
+                {
+                    vacios = true;
+                    lblErrorFacCliente.Text = "Necesita colocar el nombre y el apellido paterno.";
+                }
+                razon = nombre + " " + paterno + " " + materno;
+                rfc = txtRFC.Text.ToUpper();
+                if (rfc.Length != 13)
+                {
+                    vacios = true;
+                    lblErrorFacCliente.Text = "El R.F.C. No corresponde con el tipo de persona.";
+                }
+                int inicio = 0;
+                if (rbtnPersona.SelectedValue == "M")
+                    inicio = 0;
+                else if (rbtnPersona.SelectedValue == "F")
+                    inicio = 1;
+                fechaRFC = rfc.Substring(4 + inicio, 6 + inicio);
+            }
+            try
+            {
+                cp = txtCP.Text;
+                if (cp.Length != 5)
+                {
+                    lblErrorFacCliente.Text = "El cÓdigo postal debe ser de 5 dígitos.";
+                    vacios = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                lblErrorFacCliente.Text = "El codigo postal debe ser de 5 dígitos.";
+                vacios = true;
+            }
+            try
+            {
+                string año = fechaRFC.Substring(0, 2);
+                string mes = fechaRFC.Substring(2, 2);
+                string dia = fechaRFC.Substring(4, 2);
+                DateTime fec = fechas.obtieneFechaLocal(); ;
+                try
+                {
+                    fec = Convert.ToDateTime(dia + "/" + mes + "/" + año);
+                }
+                catch (Exception)
+                {
+                    lblErrorFacCliente.Text = "El R.F.C. No coincide con el tipo de persona seleccionado, verifique sus datos.";
+                }
+                TimeSpan edadTS = fechas.obtieneFechaLocal() - fec;
+                int dias = Convert.ToInt32(edadTS.TotalDays);
+                int años = Convert.ToInt32(dias / 365);
+                edad = Convert.ToString(años);
+                fechaNacimiento = fec.ToString("yyyy-MM-dd");
+            }
+            catch (Exception ex)
+            {
+                lblErrorFacCliente.Text = "Hubo un error al procesar el R.F.C. verifique sus datos. " + ex.Message;
+                vacios = true;
+            }
+            if (!vacios)
+            {
+                string sexo = "";
+                string calle = txtCalle.Text;
+                string numero = txtNumero.Text;
+                string colonia = txtColonia.Text;
+                string ciudad = txtCiudad.Text;
+                string estado = txtEstado.Text;
+                string correo = txtEMail.Text;
+                string numeroInt = txtNumeroInt.Text;
+                string delegacion = txtDelegacion.Text;
+                string pais = "México";
+                string referncia = txtReferenciaFacCliente.Text;
+
+                bool existe = datosCli.existeClienteRFC(rfc);
+                if (!existe)
+                {
+                    bool insertado = datosCli.agregaCliente(rfc, razon, calle, numero, colonia, cp, ciudad, estado, tipoPersona, paterno, materno, nombre, correo, sexo, edad, fechaNacimiento, numeroInt, delegacion, referncia, pais);
+                    if (!insertado)
+                        lblErrorFacCliente.Text = "Hubo un problema al insertar el cliente, verifique su conexión e intentelo nuevamente.";
+                }
+                else
+                {
+                    int id = datosCli.obtieneIdClienteRFC(rfc);
+                    bool insertado = datosCli.actualizaCliente(rfc, razon, calle, numero, colonia, cp, ciudad, estado, tipoPersona, paterno, materno, nombre, correo, sexo, edad, fechaNacimiento, numeroInt, delegacion, referncia, pais, id);
+                    if (!insertado)
+                        lblErrorFacCliente.Text = "Hubo un problema al actualizar el cliente, verifique su conexión e intentelo nuevamente.";
+
+                }
+            }
+        }
+        lblErrorFacCliente.Text = "El formato del R.F.C. No coincide con el tipo de persona seleccionado, verifique su información.";
+    }
+
+    protected void btnCancelarCliente_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            ClientesDatos datosCli = new ClientesDatos();
+            int idCliente = datosCli.obtieneIdClienteRFC(txtRFC.Text.ToUpper());
+            string isla = Request.QueryString["p"];
+            string ticket = lblTicket.Text;
+            bool actualizaVentEncab = datosCli.actualizaVentaEncabezado(idCliente, isla, ticket);
+            if (actualizaVentEncab)
+            {
+                pnlTicket.Visible = true;
+                btnCancelarCliente.Enabled = false;
+                chkFacturacionPend.Enabled = false;
+                pnlCliente.Enabled = false;
+                btnRevisaRFC.Enabled = false;
+                txtRFCVerifica.Enabled = false;
+                lblErrorFacCliente.Text = "Su factura será enviada al correo electrónico proporcionado.";
+            }
+            else {
+                lblErrorFacCliente.Text = "Se produjo un error al solicitar la factura, profavor intente más tarde.";
+            }
+        }
+        catch (Exception) { }
+    }
+
+    protected void btnRevisaRFC_Click(object sender, EventArgs e)
+    {        
+        ClientesDatos datosCli = new ClientesDatos();
+        string rfc = txtRFCVerifica.Text.ToUpper();
+        chkFacturacionPend.Enabled = false;
+        bool existe = false;
+        if (rfc.Trim() != "")
+        {
+            pnlCliente.Visible = true;
+            existe = datosCli.existeClienteRFC(rfc);
+            if (existe)
+            {
+                lblErrorFacCliente.Text = "";
+                int idCliente = datosCli.obtieneIdClienteRFC(rfc);
+                ClientesDatos cliente = new ClientesDatos();
+                object[] datos = cliente.obtieneDatosCliente(rfc.ToUpper());
+                if (Convert.ToBoolean(datos[0]))
+                {
+                    DataSet valores = (DataSet)datos[1];
+                    foreach (DataRow fila in valores.Tables[0].Rows)
+                    {
+                        rbtnPersona.SelectedValue = fila[7].ToString();
+                        txtRFC.Text = rfc;
+                        txtArchivarNombre.Text = fila[0].ToString();
+                        txtNombre.Text = fila[10].ToString();
+                        txtPaterno.Text = fila[8].ToString();
+                        txtMaterno.Text = fila[9].ToString();
+                        txtCalle.Text = fila[1].ToString();
+                        txtNumero.Text = fila[2].ToString();
+                        txtNumeroInt.Text = fila[3].ToString();
+                        txtColonia.Text = fila[12].ToString();
+                        txtDelegacion.Text = fila[13].ToString();
+                        txtEstado.Text = fila[6].ToString();
+                        txtCiudad.Text = fila[5].ToString();
+                        txtCP.Text = fila[4].ToString().PadLeft(5, '0');
+                        txtEMail.Text = fila[11].ToString();
+                        txtReferencia.Text = fila[14].ToString();
+                    }
+                }
+                else
+                    lblErrorFacCliente.Text = "Error: " + Convert.ToString(datos[1]);
+            }
+            else
+            {
+                lblErrorFacCliente.Text = "El cliente indicado no se encuentra, agregue su información";
+                lblRazon.Text = "";
+                rbtnPersona.SelectedValue = "M";
+                txtArchivarNombre.Text = "";
+                txtNombre.Text = "";
+                txtPaterno.Text = "";
+                txtMaterno.Text = "";
+                txtCalle.Text = "";
+                txtNumero.Text = "";
+                txtNumeroInt.Text = "";
+                txtColonia.Text = "";
+                txtDelegacion.Text = "";
+                txtEstado.Text = "";
+                txtCiudad.Text = "";
+                txtCP.Text = "";
+                txtEMail.Text = "";
+                txtReferencia.Text = "";
+                txtRFC.Text = rfc;
+                if (rfc.Length == 12)
+                {
+                    rbtnPersona.SelectedValue = "M";
+                    Label20.Visible = false;
+                    Label19.Visible = txtArchivarNombre.Visible = true;
+                    txtNombre.Visible = txtPaterno.Visible = txtMaterno.Visible = false;
+                }
+                else if (rfc.Length == 13)
+                {
+                    rbtnPersona.SelectedValue = "F";
+                    Label20.Visible = true;
+                    Label19.Visible = txtArchivarNombre.Visible = false;
+                    txtNombre.Visible = txtPaterno.Visible = txtMaterno.Visible = true;
+                }
+            }
+        }
+        else
+        {
+            pnlCliente.Visible = false;
+            lblErrorFacCliente.Text = "Debe introducir un R.F.C.";
+        }
+    
+    }
+        
+    
+
+    private void inactivaPrecioVenta() {
+        bool[] _permisos = new bool[36];
+        for (int i = 0; i < _permisos.Length; i++)
+        {
+            _permisos[i] = false;
+        }
+        try { usuarioLog = Convert.ToString(Request.QueryString["u"]); }
+        catch (Exception)
+        {
+            string alerta = "alert('Su sesión a caducado, por favor vuelva a ingresar')";
+            ScriptManager.RegisterStartupScript(this, typeof(Page), "cierre", alerta, true);
+        }
+        if (usuarioLog == "")
+            Response.Redirect("Default.aspx");
+        else
+        {
+            ObtienePermisos permisos = new ObtienePermisos();
+            permisos.Usuario = usuarioLog;
+            permisos.obtienePermisos();
+            _permisos = permisos.Permisos;
+            permisos.PermisoBuscado = 35;
+            permisos.cuentaPermiso();
+            lblCostoVenta.Enabled = permisos.Permitido;
+        }
+    }
+    protected void btnValidar_Click(object sender, EventArgs e)
+    {
+        lblProducto.Text = "";
+        lblError.Text = "";
+        imgProducto.Visible = false;
+        lblCostoVenta.Text = "0.00";
+        txtCantidad.Text = "";
+        txtVentaAgranel.Text = "";
+        lblTotalProducto.Text = "";
+        txtCantidad.Enabled = true;
+        lblCostoVenta.Enabled = true;
+        inactivaPrecioVenta();
+        try
+        {
+            if (txtProd.Text != "")
+            {
+                //string[] argumentos = RadAutoCompleteBox.Text.ToString().Split(new char[] { '/' });
+                //string[] producto = argumentos[1].Trim().Split(new char[] { ';' });
+                string producto = txtProd.Text.PadLeft(15, '0');
+                Producto produc = new Producto();               
+
+                produc.ClaveProducto = Convert.ToString(producto.Trim());                
+                object[] valor = produc.obtieneProducto();
+                if (Convert.ToBoolean(valor[0]))
+                {
+                    imgProducto.Visible = true;
+                    if (Convert.ToString(valor[1]) != "")
+                    {
+                        int pv;
+                        try { pv = Convert.ToInt32(Request.QueryString["p"]); }
+                        catch (Exception) { pv = 0; }
+                        if (pv != 0)
+                        {
+                            produc.Isla = pv;
+                            produc.existeIsla();
+                            lblProducto.Text = produc.ClaveProducto;
+                            imgProducto.ImageUrl = "~/imgProductos.ashx?id=" + produc.ClaveProducto.Trim();
+                            object[] venta = produc.obtienePrecioVenta();
+                            if (Convert.ToBoolean(venta[0]))
+                                lblCostoVenta.Text = Convert.ToDecimal(venta[1]).ToString();
+                            else
+                                lblCostoVenta.Text = "0.00";
+
+                            object[] ventaAgranel = produc.vendeAgranel();
+                            if (Convert.ToBoolean(ventaAgranel[0]))
+                                txtVentaAgranel.Visible = Convert.ToBoolean(ventaAgranel[1]);
+                            else
+                                txtVentaAgranel.Visible = false;
+
+                            if (lblCostoVenta.Text == "0.00")
+                            {
+                                lblProducto.Text = "El producto no esta disponible para su venta";
+                                imgProducto.ImageUrl = "img/noDisponible.png";
+                                txtCantidad.Enabled = false;
+                                txtVentaAgranel.Visible = false;
+                                inactivaPrecioVenta();
+                                lblCostoVenta.Enabled = false;
+                            }
+                        }
+                        else
+                            lblError.Text = "Su sesión a caducado por favor vuelva a ingresar";
+                    }
+                    else
+                    {
+                        lblProducto.Text = "El producto no existe";
+                        imgProducto.ImageUrl = "img/noDisponible.png";
+                    }
+                }
+                else
+                {
+                    lblProducto.Text = "";
+                    imgProducto.Visible = false;
+                    lblError.Text = Convert.ToString(valor[1]);
+                }
+            }
+            else
+            {
+                lblProducto.Text = "";
+                imgProducto.Visible = false;
+            }
+        }
+        catch (Exception ex) { lblProducto.Text = ""; lblError.Text = ex.Message; imgProducto.Visible = false; }
+    }
+}
