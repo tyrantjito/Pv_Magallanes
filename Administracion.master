@@ -104,6 +104,7 @@
                                     <asp:LinkButton runat="server" ID="lnkLineas" OnClick="lnkLineas_Click">L&iacute;neas</asp:LinkButton></li>
                                 <li>
                                     <asp:LinkButton runat="server" ID="lnkIslas" OnClick="lnkIslas_Click">Tiendas</asp:LinkButton></li>
+                                <li><asp:LinkButton runat="server" ID="lnkCentros" OnClick="lnkCentros_Click">Centros</asp:LinkButton></li>
                                 <li>
                                     <asp:LinkButton runat="server" ID="lnkUsuIsla" OnClick="lnkUsuIsla_Click">Usuario Tiendas</asp:LinkButton></li>
                                 <li>

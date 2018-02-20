@@ -227,4 +227,9 @@ public partial class Administracion : System.Web.UI.MasterPage
     {
         Response.Redirect("ConsultarAjuste.aspx?u=" + usuario + "&nu=" + nombre);
     }
+    
+        protected void lnkCentros_Click(object sender, EventArgs e)
+    {
+        Response.Redirect("CatCentros.aspx?u=" + usuario + "&nu=" + nombre);
+    }
 }
